@@ -1,0 +1,200 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "KOPNUS API",
+        "description": "Member financial transaction API",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api/v1",
+            "description": "Versioned API root"
+        }
+    ],
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Exchange credentials for a bearer token",
+                "description": "Public endpoint. Returns a short-lived HS256 token and allows 5 attempts per minute per IP.",
+                "operationId": "login",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "member@example.test"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password"
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Credentials accepted. Token issued.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Authenticated."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "access_token": {
+                                                    "type": "string"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "example": "Bearer"
+                                                },
+                                                "expires_in": {
+                                                    "type": "integer",
+                                                    "example": 3600
+                                                }
+                                            }
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            },
+                                            "example": []
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Email or password is incorrect.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Payload validation failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too many login attempts from this IP.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ApiErrorEntry": {
+                "type": "object",
+                "description": "One error entry inside the response envelope.",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "example": "INVALID_CREDENTIALS"
+                    },
+                    "field": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "example": "email"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    }
+                },
+                "required": [
+                    "code",
+                    "field",
+                    "message"
+                ]
+            },
+            "ApiErrorEnvelope": {
+                "type": "object",
+                "description": "Envelope returned by every API error response.",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": false
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Email or password is incorrect."
+                    },
+                    "data": {
+                        "type": [
+                            "object",
+                            "null"
+                        ]
+                    },
+                    "errors": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/ApiErrorEntry"
+                        }
+                    }
+                },
+                "required": [
+                    "success",
+                    "message",
+                    "data",
+                    "errors"
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "Authentication"
+        }
+    ]
+}

@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use App\Repositories\RequestLogRepository;
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Persists a request log row for every API request, successful or failed.
+ *
+ * Runs first in the API group so throttling, validation, and authentication
+ * failures are all recorded, and exposes the trace id for audit correlation.
+ */
+final class RecordApiRequest
+{
+    public const string TRACE_ID_ATTRIBUTE = 'trace_id';
+
+    public function __construct(private readonly RequestLogRepository $requests) {}
+
+    /**
+     * @param  Closure(Request): Response  $next
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        $traceId = $this->requests->start($request);
+        $request->attributes->set(self::TRACE_ID_ATTRIBUTE, $traceId);
+
+        $response = $next($request);
+
+        // The routing pipeline converts failures into rendered responses before
+        // they reach this point and attaches the original exception to them.
+        $this->requests->finish(
+            $traceId,
+            $request->user(),
+            $response->getStatusCode(),
+            $response->exception ?? null,
+        );
+
+        return $response;
+    }
+}
