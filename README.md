@@ -1,58 +1,120 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# KOPNUS API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel 13 API for member financial transactions. Amounts are whole Indonesian rupiah (IDR) integers. Writes are authenticated with a short-lived HS256 bearer token and are idempotent.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.4 with the `pdo_sqlite` extension
+- Composer 2
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Setup
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Set `JWT_SECRET` in `.env`; tokens cannot be issued without it:
 
-## Contributing
+```bash
+php -r "echo bin2hex(random_bytes(32));"
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Create the SQLite database and run migrations:
 
-## Code of Conduct
+```bash
+touch database/database.sqlite
+php artisan migrate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Optional demo data creates 10 users with 1,000,000 IDR each. Seeded users share the password `password`:
 
-## Security Vulnerabilities
+```bash
+php artisan db:seed
+php artisan tinker --execute 'App\Models\User::pluck("email");'
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+`composer setup` runs install, env copy, key generation, and migrations, but does not create `database/database.sqlite` or set `JWT_SECRET`, so both steps above are still required.
 
-## License
+## Running
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+php artisan serve
+```
+
+The API listens on http://localhost:8000 under `/api/v1`. `GET /up` is the health check.
+
+`composer dev` starts the server, a queue listener, and log tailing in one command.
+
+## API
+
+Every response uses one envelope:
+
+```json
+{
+  "success": true,
+  "message": "Authenticated.",
+  "data": {},
+  "errors": []
+}
+```
+
+`POST /api/v1/auth/login` accepts `email` and `password` and returns `access_token`, `token_type`, and `expires_in`. Login allows 5 attempts per minute per IP. Send the token as `Authorization: Bearer <token>` on the endpoints below.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| POST | `/api/v1/auth/login` | Exchange credentials for a bearer token |
+| POST | `/api/v1/transactions/deposit` | Credit the authenticated account |
+| POST | `/api/v1/transactions/withdraw` | Debit the authenticated account |
+
+Deposit and withdraw require a unique `Idempotency-Key` header. Repeating a key with the same payload returns the stored response without executing again; reusing a key with a different payload returns `409 CONFLICT`. Amounts are integers from 1 to 25,000,000. A withdrawal above the available balance returns `422 INSUFFICIENT_BALANCE` and leaves the balance unchanged.
+
+```bash
+curl -s http://localhost:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"member@example.test","password":"password"}'
+
+curl -s http://localhost:8000/api/v1/transactions/withdraw \
+  -H 'Authorization: Bearer <access_token>' \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: demo-key-1' \
+  -d '{"amount":10000}'
+```
+
+## Tests
+
+Feature tests run against an in-memory SQLite database configured in `phpunit.xml`, so no setup is needed:
+
+```bash
+composer test
+```
+
+Equivalent commands:
+
+```bash
+php artisan test --compact
+vendor/bin/pest
+vendor/bin/pest tests/Feature/WithdrawEndpointTest.php
+```
+
+Format changed PHP files:
+
+```bash
+vendor/bin/pint --dirty --format agent
+```
+
+## OpenAPI
+
+The generated spec is committed as `openapi.json`. Regenerate it after changing controller annotations:
+
+```bash
+vendor/bin/openapi app -o openapi.json
+```
+
+## Architecture
+
+- Controllers handle HTTP only; services own business rules and `DB::transaction` boundaries; repositories own persistence.
+- `RecordApiRequest` logs every API request; `AuthenticateWithToken` validates the bearer token; `EnsureIdempotentRequest` enforces idempotency key semantics.
+- Tables: `users`, `accounts`, `transactions` (ledger), `audit_logs`, and `request_logs`.
+- Withdrawals use a conditional SQL `UPDATE ... WHERE balance >= amount`, so concurrent requests cannot drive the balance below zero.
