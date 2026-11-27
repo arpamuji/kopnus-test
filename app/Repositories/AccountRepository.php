@@ -38,4 +38,28 @@ final class AccountRepository
 
         return (int) DB::table('accounts')->where('id', $account->getKey())->value('balance');
     }
+
+    /**
+     * Subtract an amount only when the balance covers it, returning the new
+     * balance or null when the balance is insufficient.
+     *
+     * @param  Account  $account  Account to debit.
+     * @param  int  $amount  Whole-rupiah amount to subtract.
+     */
+    public function debit(Account $account, int $amount): ?int
+    {
+        $affected = DB::table('accounts')
+            ->where('id', $account->getKey())
+            ->where('balance', '>=', $amount)
+            ->update([
+                'balance' => DB::raw('balance - '.(int) $amount),
+                'updated_at' => now(),
+            ]);
+
+        if ($affected === 0) {
+            return null;
+        }
+
+        return (int) DB::table('accounts')->where('id', $account->getKey())->value('balance');
+    }
 }

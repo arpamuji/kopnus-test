@@ -21,6 +21,8 @@ final class AuditLogRepository
 
     public const string ACTION_DEPOSIT = 'deposit';
 
+    public const string ACTION_WITHDRAW = 'withdraw';
+
     public const string RESULT_SUCCESS = 'success';
 
     public const string RESULT_FAILURE = 'failure';
@@ -32,6 +34,8 @@ final class AuditLogRepository
     public const string FAILURE_VALIDATION_FAILED = 'validation_failed';
 
     public const string FAILURE_ACCOUNT_NOT_FOUND = 'account_not_found';
+
+    public const string FAILURE_INSUFFICIENT_BALANCE = 'insufficient_balance';
 
     /**
      * Write one audit record.

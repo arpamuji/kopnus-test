@@ -13,6 +13,8 @@ enum ApiErrorCode: string
 {
     case ValidationFailed = 'VALIDATION_FAILED';
 
+    case InsufficientBalance = 'INSUFFICIENT_BALANCE';
+
     case Unauthorized = 'UNAUTHORIZED';
 
     case InvalidCredentials = 'INVALID_CREDENTIALS';
@@ -43,7 +45,7 @@ enum ApiErrorCode: string
     public function status(): int
     {
         return match ($this) {
-            self::ValidationFailed => Response::HTTP_UNPROCESSABLE_ENTITY,
+            self::ValidationFailed, self::InsufficientBalance => Response::HTTP_UNPROCESSABLE_ENTITY,
             self::Unauthorized, self::InvalidCredentials, self::TokenMissing,
             self::TokenInvalid, self::TokenExpired => Response::HTTP_UNAUTHORIZED,
             self::Forbidden => Response::HTTP_FORBIDDEN,
@@ -63,6 +65,7 @@ enum ApiErrorCode: string
     {
         return match ($this) {
             self::ValidationFailed => 'The given data was invalid.',
+            self::InsufficientBalance => 'Insufficient balance.',
             self::Unauthorized => 'Authentication is required.',
             self::InvalidCredentials => 'Email or password is incorrect.',
             self::TokenMissing => 'A bearer token is required.',

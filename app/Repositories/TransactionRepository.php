@@ -14,6 +14,8 @@ final class TransactionRepository
 {
     public const string TYPE_DEPOSIT = 'deposit';
 
+    public const string TYPE_WITHDRAW = 'withdraw';
+
     public const string PUBLIC_ID_DATE_FORMAT = 'dmy';
 
     public const int PUBLIC_ID_GROUP_LENGTH = 4;
@@ -32,6 +34,42 @@ final class TransactionRepository
         int $balanceAfter,
         string $traceId,
     ): array {
+        return $this->record($account, self::TYPE_DEPOSIT, $amount, $balanceBefore, $balanceAfter, $traceId);
+    }
+
+    /**
+     * Record a withdrawal ledger row.
+     *
+     * @param  Account  $account  Account the withdrawal debits.
+     * @param  int  $amount  Whole-rupiah amount withdrawn.
+     * @param  int  $balanceBefore  Balance before the withdrawal.
+     * @param  int  $balanceAfter  Balance after the withdrawal.
+     * @param  string  $traceId  Trace id of the originating request.
+     * @return array{transaction_id: string, type: string, amount: int, balance_before: int, balance_after: int, created_at: string}
+     */
+    public function createWithdraw(
+        Account $account,
+        int $amount,
+        int $balanceBefore,
+        int $balanceAfter,
+        string $traceId,
+    ): array {
+        return $this->record($account, self::TYPE_WITHDRAW, $amount, $balanceBefore, $balanceAfter, $traceId);
+    }
+
+    /**
+     * Insert a ledger row and return the shape exposed to clients.
+     *
+     * @return array{transaction_id: string, type: string, amount: int, balance_before: int, balance_after: int, created_at: string}
+     */
+    private function record(
+        Account $account,
+        string $type,
+        int $amount,
+        int $balanceBefore,
+        int $balanceAfter,
+        string $traceId,
+    ): array {
         $createdAt = now();
         $publicId = $this->publicTransactionId($createdAt);
 
@@ -39,7 +77,7 @@ final class TransactionRepository
             'id' => (string) Str::uuid7(),
             'public_transaction_id' => $publicId,
             'account_id' => $account->getKey(),
-            'type' => self::TYPE_DEPOSIT,
+            'type' => $type,
             'amount' => $amount,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,
@@ -49,7 +87,7 @@ final class TransactionRepository
 
         return [
             'transaction_id' => $publicId,
-            'type' => self::TYPE_DEPOSIT,
+            'type' => $type,
             'amount' => $amount,
             'balance_before' => $balanceBefore,
             'balance_after' => $balanceAfter,

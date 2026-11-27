@@ -117,7 +117,11 @@ final class EnsureIdempotentRequest
         $status = $response->getStatusCode();
         $payload = (string) $response->getContent();
 
-        if ($status === Response::HTTP_UNPROCESSABLE_ENTITY) {
+        $exception = $response->exception ?? null;
+        $validationFailed = $exception instanceof ValidationException
+            || ($exception instanceof ApiException && $exception->errorCode === ApiErrorCode::ValidationFailed);
+
+        if ($status === Response::HTTP_UNPROCESSABLE_ENTITY && $validationFailed) {
             $this->requests->releaseClaim($traceId);
 
             return $response;
