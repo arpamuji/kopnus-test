@@ -8,7 +8,8 @@ Laravel API for member financial transactions.
 ## Scope
 
 - User accounts with bearer token authentication. Implement a minimal HS256 JWT-style token locally.
-- Monetary amounts use Indonesian rupiah (IDR) and a decimal type with exactly two fractional digits. Store them as integers representing cents to avoid floating-point precision errors.
+- Monetary amounts are in Indonesian rupiah (IDR) stored as whole integer rupiah; no fractional digits are stored or accepted.
+- The minimum amount for deposit and withdraw is 1 rupiah.
 - Three operations: check balance, deposit, and withdraw.
 - Every transaction, successful or failed, must be persistently logged. Balance reads are also logged. Failed writes must not leave a success audit record; failed validation or authentication must be logged separately when a user can be identified.
 - Balance must never become negative.
@@ -69,6 +70,10 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - Stick to existing directory structure; don't create new base folders without approval.
 - Do not change the application's dependencies without approval.
+
+## Frontend Bundling
+
+- If a frontend change doesn't show in the UI or you get a "Unable to locate file in Vite manifest" error, run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 ## Documentation Files
 
@@ -133,6 +138,16 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 - Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
 - Activate the `deploying-to-cloud` skill whenever deploying to Laravel Cloud, configuring Cloud environments or resources, using the Cloud CLI, or troubleshooting Cloud deployments.
+
+=== tests rules ===
+
+# Test Enforcement
+
+- Add or update tests for behavior and logic changes when a test provides meaningful regression coverage.
+- Pure copy, styling, and layout-only changes do not require new or updated tests.
+- When test coverage applies, run the affected tests and ensure they pass.
+- Test the changed behavior and its important failure modes, but do not add tests beyond them.
+- Read the `testing-best-practices` skill before writing tests.
 
 === laravel/core rules ===
 
