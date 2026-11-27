@@ -4,20 +4,18 @@ use App\Enums\ApiErrorCode;
 use App\Exceptions\ApiException;
 use App\Exceptions\InvalidTokenException;
 use App\Http\Middleware\AuthenticateWithToken;
+use App\Http\Middleware\EnsureIdempotentRequest;
 use App\Http\Middleware\RecordApiRequest;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -30,10 +28,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'auth.jwt' => AuthenticateWithToken::class,
+            'idempotency' => EnsureIdempotentRequest::class,
         ]);
 
-        // First in the group so throttling and auth failures are logged too.
-        $middleware->api(prepend: [RecordApiRequest::class]);
+        // Global and first, so requests that never match a route are logged too.
+        $middleware->prepend(RecordApiRequest::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -62,19 +61,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ? ApiResponse::error(ApiErrorCode::Unauthorized)
             : null);
 
-        $exceptions->render(fn (ThrottleRequestsException $exception, Request $request): ?JsonResponse => $request->is('api/*')
-            ? ApiResponse::error(ApiErrorCode::RateLimited, headers: $exception->getHeaders())
-            : null);
-
-        $exceptions->render(fn (NotFoundHttpException $exception, Request $request): ?JsonResponse => $request->is('api/*')
-            ? ApiResponse::error(ApiErrorCode::NotFound)
-            : null);
-
-        $exceptions->render(fn (MethodNotAllowedHttpException $exception, Request $request): ?JsonResponse => $request->is('api/*')
-            ? ApiResponse::error(ApiErrorCode::MethodNotAllowed)
-            : null);
-
-        // Any other HTTP exception keeps its status instead of degrading to 500.
+        // HTTP exceptions keep their status instead of degrading to 500.
         $exceptions->render(fn (HttpExceptionInterface $exception, Request $request): ?JsonResponse => $request->is('api/*')
             ? ApiResponse::error(
                 match ($exception->getStatusCode()) {

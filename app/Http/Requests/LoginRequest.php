@@ -2,6 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Middleware\RecordApiRequest;
+use App\Services\AuthService;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -26,5 +29,22 @@ final class LoginRequest extends FormRequest
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
+    }
+
+    /**
+     * Audit a rejected payload when its email still identifies a registered user.
+     */
+    protected function failedValidation(Validator $validator): void
+    {
+        $email = $this->input('email');
+
+        if (is_string($email) && $email !== '') {
+            app(AuthService::class)->recordValidationFailure(
+                $email,
+                (string) $this->attributes->get(RecordApiRequest::TRACE_ID_ATTRIBUTE),
+            );
+        }
+
+        parent::failedValidation($validator);
     }
 }

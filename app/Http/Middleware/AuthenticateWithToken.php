@@ -27,9 +27,12 @@ final class AuthenticateWithToken
     ) {}
 
     /**
+     * Authenticate the bearer token and bind the resolved user to the request.
+     *
      * @param  Closure(Request): Response  $next
      *
      * @throws ApiException When the token is absent or refers to a user that no longer exists.
+     * @throws InvalidTokenException When the token cannot be parsed or has expired.
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -77,6 +80,8 @@ final class AuthenticateWithToken
         if ($user === null) {
             return;
         }
+
+        $request->setUserResolver(fn () => $user);
 
         $this->audit->record(
             $traceId,

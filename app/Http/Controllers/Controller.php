@@ -10,6 +10,13 @@ use OpenApi\Attributes as OA;
     description: 'Member financial transaction API',
 )]
 #[OA\Server(url: '/api/v1', description: 'Versioned API root')]
+#[OA\SecurityScheme(
+    securityScheme: 'bearerAuth',
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    description: 'HS256 bearer token issued by the login endpoint.',
+)]
 #[OA\Schema(
     schema: 'ApiErrorEntry',
     description: 'One error entry inside the response envelope.',
@@ -35,7 +42,7 @@ use OpenApi\Attributes as OA;
         ),
     ],
 )]
-abstract class Controller
-{
-    //
-}
+/**
+ * Base controller that hosts the shared OpenAPI schemas.
+ */
+abstract class Controller {}

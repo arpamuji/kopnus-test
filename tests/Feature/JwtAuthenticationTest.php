@@ -73,6 +73,8 @@ it('audits an expired token against its user', function (): void {
         ->and($audit->failure_reason)->toBe('token_expired')
         ->and($audit->user_id)->toBe($user->id)
         ->and($audit->trace_id)->toBe(DB::table('request_logs')->sole()->trace_id);
+
+    expect(DB::table('request_logs')->sole()->user_id)->toBe($user->id);
 });
 
 it('skips the audit when an expired token belongs to a deleted user', function (): void {

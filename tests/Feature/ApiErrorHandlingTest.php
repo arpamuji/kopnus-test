@@ -5,8 +5,11 @@ use App\Exceptions\ApiException;
 use App\Exceptions\InvalidTokenException;
 use App\Http\Responses\ApiResponse;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
+uses(RefreshDatabase::class);
 
 it('wraps a successful payload in the envelope', function (): void {
     $response = ApiResponse::success(['balance' => 1000], 'Balance retrieved.');
@@ -51,13 +54,13 @@ it('maps validation failures to per-field error entries', function (): void {
 it('renders domain rejections as api exceptions', function (): void {
     Route::get('/api/v1/test-api-exception', fn () => throw new ApiException(
         ApiErrorCode::NotFound,
-        message: 'Account does not exist.',
+        message: 'The authenticated user has no account.',
     ));
 
     $this->getJson('/api/v1/test-api-exception')
         ->assertStatus(404)
         ->assertJsonPath('errors.0.code', 'NOT_FOUND')
-        ->assertJsonPath('message', 'Account does not exist.');
+        ->assertJsonPath('message', 'The authenticated user has no account.');
 });
 
 it('maps token rejections to invalid and expired codes', function (): void {

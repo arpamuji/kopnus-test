@@ -21,7 +21,8 @@ it('logs a successful request with its outcome', function (): void {
         ->and($log->operation)->toBe('auth.login')
         ->and($log->status_code)->toBe(200)
         ->and($log->outcome)->toBe('success')
-        ->and($log->error_type)->toBeNull();
+        ->and($log->error_type)->toBeNull()
+        ->and($log->user_id)->toBe($user->id);
 });
 
 it('logs a rejected login attempt', function (): void {
@@ -39,6 +40,35 @@ it('logs a rejected login attempt', function (): void {
         ->and($log->error_type)->toBe('ApiException');
 });
 
+it('logs requests that match no route', function (): void {
+    $this->getJson('/api/v1/missing')->assertStatus(404);
+
+    $log = DB::table('request_logs')->sole();
+
+    expect($log->route)->toBe('api/v1/missing')
+        ->and($log->status_code)->toBe(404)
+        ->and($log->outcome)->toBe('failure')
+        ->and($log->error_type)->toBe('NotFoundHttpException')
+        ->and($log->operation)->toBeNull();
+});
+
+it('logs requests with a disallowed method', function (): void {
+    $this->getJson('/api/v1/auth/login')->assertStatus(405);
+
+    $log = DB::table('request_logs')->sole();
+
+    expect($log->status_code)->toBe(405)
+        ->and($log->outcome)->toBe('failure')
+        ->and($log->error_type)->toBe('MethodNotAllowedHttpException')
+        ->and($log->operation)->toBeNull();
+});
+
+it('ignores requests outside the api prefix', function (): void {
+    $this->get('/up')->assertOk();
+
+    expect(DB::table('request_logs')->count())->toBe(0);
+});
+
 it('logs a validation failure', function (): void {
     $this->postJson('/api/v1/auth/login', [])->assertStatus(422);
 
@@ -52,9 +82,7 @@ it('logs a validation failure', function (): void {
 it('logs throttled requests', function (): void {
     $payload = ['email' => 'nobody@example.test', 'password' => 'wrong-password'];
 
-    foreach (range(1, 6) as $attempt) {
-        $this->postJson('/api/v1/auth/login', $payload);
-    }
+    sendLoginAttempts(6, $payload);
 
     $throttled = DB::table('request_logs')->where('status_code', 429);
 

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 /*
@@ -44,7 +45,19 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Send repeated login attempts and return every response in order.
+ *
+ * @param  array<string, string>  $payload
+ * @return list<TestResponse>
+ */
+function sendLoginAttempts(int $attempts, array $payload): array
 {
-    // ..
+    $responses = [];
+
+    foreach (range(1, $attempts) as $_) {
+        $responses[] = test()->postJson('/api/v1/auth/login', $payload);
+    }
+
+    return $responses;
 }
