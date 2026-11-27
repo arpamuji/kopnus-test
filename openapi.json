@@ -127,6 +127,167 @@
                     }
                 }
             }
+        },
+        "/transactions/deposit": {
+            "post": {
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Deposit funds into the authenticated account",
+                "description": "Requires a bearer token and a unique Idempotency-Key header. Replays the stored response for a repeated key with the same payload, and returns 409 for a different payload or while the original request is still processing.",
+                "operationId": "deposit",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "description": "Client generated key, at most 255 characters, unique per user and operation.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 255
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 25000000,
+                                        "example": 100000
+                                    }
+                                },
+                                "required": [
+                                    "amount"
+                                ]
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "description": "Deposit accepted. Balance and ledger entry returned.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Deposit successful."
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "balance": {
+                                                    "type": "integer",
+                                                    "example": 150000
+                                                },
+                                                "transaction": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "transaction_id": {
+                                                            "type": "string",
+                                                            "example": "271126-a1b2-c3d4e5"
+                                                        },
+                                                        "type": {
+                                                            "type": "string",
+                                                            "example": "deposit"
+                                                        },
+                                                        "amount": {
+                                                            "type": "integer",
+                                                            "example": 100000
+                                                        },
+                                                        "balance_before": {
+                                                            "type": "integer",
+                                                            "example": 50000
+                                                        },
+                                                        "balance_after": {
+                                                            "type": "integer",
+                                                            "example": 150000
+                                                        },
+                                                        "created_at": {
+                                                            "type": "string",
+                                                            "format": "date-time"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            },
+                                            "example": []
+                                        }
+                                    },
+                                    "required": [
+                                        "success",
+                                        "message",
+                                        "data",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Bearer token missing, invalid, or expired.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "The authenticated user has no account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "The idempotency key is already in use with a different payload or is still processing.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Payload validation failed or the Idempotency-Key header is missing or too long.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ApiErrorEnvelope"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -189,12 +350,24 @@
                     "errors"
                 ]
             }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "HS256 bearer token issued by the login endpoint.",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
         }
     },
     "tags": [
         {
             "name": "Authentication",
             "description": "Authentication"
+        },
+        {
+            "name": "Transactions",
+            "description": "Transactions"
         }
     ]
 }
